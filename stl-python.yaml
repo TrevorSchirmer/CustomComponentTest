@@ -1,0 +1,285 @@
+esphome:
+  name: apollo-multisensor-mk1
+  includes:
+    - ld2410_uart.h
+  friendly_name: Apollo Multisensor Mk1
+  comment: Apollo Multisensor Mk1
+  name_add_mac_suffix: true
+  platformio_options:
+    board_build.flash_mode: dio
+  
+  on_boot:
+    priority: 900
+    then:
+      - lambda: |-
+          id(cpu_speed) = ESP.getCpuFreqMHz() ;
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setNumbers(maxMovingDistanceRange, maxStillDistanceRange, noneDuration);
+      
+
+  project:
+    name: "Apollo.Multisensor"
+    version: "Mk1"
+
+  min_version: 2023.6.1
+
+esp32:
+  board: esp32-c3-devkitm-1
+  #board: featheresp32-s2
+
+globals:
+   - id: cpu_speed
+     type: int
+     restore_value: no
+     initial_value: '0'
+
+# Enable Home Assistant API
+api:
+  #encryption:
+  #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
+
+
+ota:
+  password: "apolloautomation"
+
+wifi:
+  ssid: "Schirmer-IoT" #!secret wifi_ssid
+  password: "Apollo1359!" #!secret wifi_password
+  power_save_mode: NONE
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Apollo Multisensor Hotspot"
+    password: ""
+
+captive_portal:
+
+web_server:
+  port: 80
+
+i2c:
+  sda: 4
+  scl: 5
+  id: bus_a
+
+binary_sensor:
+  - platform: status
+    name: Online
+    id: ink_ha_connected
+  - platform: custom
+    lambda: |-
+      auto uart_component = static_cast<LD2410 *>(ld2410);
+      return {uart_component->hasTarget,uart_component->hasMovingTarget,uart_component->hasStillTarget,uart_component->lastCommandSuccess};
+    binary_sensors:
+      - name: "Has Target"
+      - name: "Has Moving Target"
+      - name: "Has Still Target"
+      - name: "Last Command Success"
+  
+  #- platform: gpio
+  #  pin: 5
+  #  name: "PIR Sensor"
+  #  device_class: motion
+
+  #- platform: ld2410
+  #  has_target:
+  #    name: Presence
+  #  has_moving_target:
+  #    name: Moving Target
+  #  has_still_target:
+  #    name: Still Target
+
+
+sensor:
+  - platform: template
+    name: "ESP Cpu Speed"
+    accuracy_decimals: 0
+    unit_of_measurement: Mhz
+    lambda: |-
+      return (id(cpu_speed));
+    entity_category: "diagnostic"
+  
+  - platform: template
+    id: sys_esp_temperature
+    name: ESP Temperature
+    lambda: return temperatureRead();
+    unit_of_measurement: °C
+    device_class: TEMPERATURE
+    update_interval: 30s
+
+  - platform: uptime
+    name: Uptime
+    id: sys_uptime
+    update_interval: 10s
+  
+  - platform: template
+    id: esp_memory
+    icon: mdi:memory
+    name: ESP Free Memory
+    lambda: return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;
+    unit_of_measurement: 'kB'
+    state_class: measurement
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal 
+    name: RSSI
+    id: wifi_signal_db
+    update_interval: 5s
+    entity_category: "diagnostic"
+
+  - platform: scd4x
+    co2:
+      name: "CO2"
+      id: "co2"
+    temperature:
+      name: "SCD40 Temperature"
+      id: "scd40temperature"
+    humidity:
+      name: "SCD40 Humidity"
+      id: "scd40humidity"
+    automatic_self_calibration: false
+    update_interval: 10s
+    measurement_mode: "periodic"
+    address: 0x62
+    i2c_id: bus_a
+
+  - platform: custom
+    lambda: |-
+      auto uart_component = static_cast<LD2410 *>(ld2410);
+      return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
+    sensors:
+      - name: "Moving Target Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+      - name: "Moving Target Energy"
+        unit_of_measurement: "%"
+        accuracy_decimals: 0
+      - name: "Still Target Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+      - name: "Still Target Energy"
+        unit_of_measurement: "%"
+        accuracy_decimals: 0
+      - name: "Detect Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+  
+  #- platform: ld2410
+  #  moving_distance:
+  #    name : Moving Distance
+  #  still_distance:
+  #    name: Still Distance
+  #  moving_energy:
+  #    name: Move Energy
+  #  still_energy:
+  #    name: Still Energy
+  #  detection_distance:
+  #    name: Detection Distance
+
+#light:
+#  - platform: neopixelbus
+#    type: GRB
+#    variant: WS2811
+#    pin: 3
+#    num_leds: 1
+#    name: "NeoPixel Light"
+
+uart:
+  id: uart_ld2410
+  tx_pin: TX
+  rx_pin: RX
+  baud_rate: 256000 # Change this according to your setting
+  parity: NONE
+  stop_bits: 1
+  debug:
+    direction: BOTH
+    dummy_receiver: false
+    after:
+      delimiter: [0xF8,0xF7,0xF6,0xF5]
+      
+custom_component:
+  - lambda: |-
+      return {new LD2410(id(uart_ld2410))};
+    components:
+      - id: ld2410
+    
+  
+
+
+
+
+number:        
+  - platform: template
+    name: "Max Moving Distance Range"
+    id: maxMovingDistanceRange
+    min_value: 1
+    max_value: 8
+    step: 1
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(x,id(maxStillDistanceRange).state,id(noneDuration).state);
+  - platform: template
+    name: "Max Still Distance Range"
+    id: maxStillDistanceRange
+    min_value: 1
+    max_value: 8
+    step: 1
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,x,id(noneDuration).state);
+  - platform: template
+    name: "None Duration"
+    id: noneDuration
+    min_value: 0
+    max_value: 32767
+    step: 1
+    mode: box
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,id(maxStillDistanceRange).state,x);
+      
+
+button:
+  - platform: template
+    name: "Reboot LD2410"
+    on_press:
+      lambda: 'static_cast<LD2410 *>(ld2410)->reboot();'
+  - platform: template
+    name: "Turn on config mode"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(true);'
+  - platform: template
+    name: "Turn off config mode"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
+  - platform: template
+    name: "Get config"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
+  - platform: template
+    name: "Set baud rate to 256000"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(7);'
+  - platform: template
+    name: "Set baud rate to 115200"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(5);'
+  - platform: template
+    name: "Set baud rate to 9600"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(1);'
+
+time:
+  - platform: sntp
+    id: time_sntp
+
