@@ -35,13 +35,7 @@ globals:
 api:
   #encryption:
   #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
-external_components:
-  # - source: github://screek-workshop/custom_components_support_for_screek_1u
-  - source:
-      type: git
-      url: https://github.com/screek-workshop/custom_components_support_for_screek_1u
-      ref: master
-    # components: [ ld2410, uart ]
+
 logger:
 
 ota:
@@ -162,8 +156,8 @@ sensor:
 #    name: "NeoPixel Light"
 
 uart:
-  tx_pin: GPIO18
-  rx_pin: GPIO19
+  tx_pin: GPIO0
+  rx_pin: GPIO1
   baud_rate: 256000
   parity: NONE
   stop_bits: 1
