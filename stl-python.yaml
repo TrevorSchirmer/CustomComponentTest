@@ -13,9 +13,10 @@ esphome:
     then:
       - lambda: |-
           id(cpu_speed) = ESP.getCpuFreqMHz() ;
-      - lambda: |-
-          auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setNumbers(maxMovingDistanceRange, maxStillDistanceRange, noneDuration);
+      - script.execute: get_config
+      #- lambda: |-
+      #    auto uart_component = static_cast<LD2410 *>(ld2410);
+      #    uart_component->setNumbers(maxMovingDistanceRange, maxStillDistanceRange, noneDuration);
       
 
   project:
@@ -39,6 +40,7 @@ api:
   #encryption:
   #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
 
+logger:
 
 ota:
   password: "apolloautomation"
@@ -67,15 +69,21 @@ binary_sensor:
   - platform: status
     name: Online
     id: ink_ha_connected
-  - platform: custom
-    lambda: |-
-      auto uart_component = static_cast<LD2410 *>(ld2410);
-      return {uart_component->hasTarget,uart_component->hasMovingTarget,uart_component->hasStillTarget,uart_component->lastCommandSuccess};
-    binary_sensors:
-      - name: "Has Target"
-      - name: "Has Moving Target"
-      - name: "Has Still Target"
-      - name: "Last Command Success"
+  - platform: gpio
+    name: mmwave_presence_ld2410
+    id: mmwave_presence_ld2410
+    pin: GPIO11
+    device_class: motion
+    on_state:
+      then:
+        - if: 
+            condition: 
+              - binary_sensor.is_off: mmwave_presence_ld2410
+            then: 
+              - delay: 150ms
+              - script.execute: clear_targets
+
+    
   
   #- platform: gpio
   #  pin: 5
@@ -144,26 +152,47 @@ sensor:
     address: 0x62
     i2c_id: bus_a
 
-  - platform: custom
+  - platform: custom # currently crashes ESP32
     lambda: |-
       auto uart_component = static_cast<LD2410 *>(ld2410);
-      return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
+      //return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
+      return {};
     sensors:
-      - name: "Moving Target Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
-      - name: "Moving Target Energy"
-        unit_of_measurement: "%"
-        accuracy_decimals: 0
-      - name: "Still Target Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
-      - name: "Still Target Energy"
-        unit_of_measurement: "%"
-        accuracy_decimals: 0
-      - name: "Detect Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
+    
+  - platform: template
+    name: movingTargetDistance
+    id: movingTargetDistance
+    unit_of_measurement: "cm"
+    accuracy_decimals: 0
+    internal: true
+    
+  - platform: template
+    name: movingTargetEnergy
+    id: movingTargetEnergy
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    internal: true
+    
+  - platform: template
+    name: stillTargetDistance
+    id: stillTargetDistance
+    unit_of_measurement: "cm"
+    accuracy_decimals: 0
+    internal: true
+    
+  - platform: template
+    name: stillTargetEnergy
+    id: stillTargetEnergy
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    internal: true
+    
+  - platform: template
+    name: detectDistance
+    id: detectDistance
+    unit_of_measurement: "cm"
+    accuracy_decimals: 0
+    internal: true
   
   #- platform: ld2410
   #  moving_distance:
@@ -186,100 +215,161 @@ sensor:
 #    name: "NeoPixel Light"
 
 uart:
-  id: uart_ld2410
-  tx_pin: TX
-  rx_pin: RX
-  baud_rate: 256000 # Change this according to your setting
+  id: uart_bus
+  tx_pin:
+    number: GPIO18
+  rx_pin: 
+    number: GPIO19
+  baud_rate: 256000
   parity: NONE
   stop_bits: 1
-  debug:
-    direction: BOTH
-    dummy_receiver: false
-    after:
-      delimiter: [0xF8,0xF7,0xF6,0xF5]
       
 custom_component:
   - lambda: |-
-      return {new LD2410(id(uart_ld2410))};
+      return {new LD2410(id(uart_bus))};
     components:
       - id: ld2410
     
+ 
+time:
+  - platform: sntp
+    id: time_sntp
+
+
+
+
+
+
+
+
+
+
+switch:
+  - platform: safe_mode
+    name: use_safe_mode
+    
+  - platform: template
+    name: configmode
+    id: configmode
+    optimistic: true
+    # assumed_state: false
+    turn_on_action:
+      # - switch.turn_off: engineering_mode
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(true);'
+      - delay: 100ms
+      - script.execute: clear_targets
+    turn_off_action:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
+
+  - platform: template
+    name: show_target_stats
+    id: show_stats
+    optimistic: true
+    internal: true
+    turn_off_action:
+      - script.execute: clear_targets
+
+text_sensor:
+  - platform: template
+    name: uptime_human_readable
+    id: uptime_human_readable
+    icon: mdi:clock-start
+    update_interval: 60s
+
   
+    
 
 
-
-
-number:        
+number:  
   - platform: template
-    name: "Max Moving Distance Range"
-    id: maxMovingDistanceRange
-    min_value: 1
-    max_value: 8
-    step: 1
+    name: configMaxDistance
+    id: maxconfigDistance
+    unit_of_measurement: "M"
+    min_value: 0.75
+    max_value: 6
+    step: 0.75
     update_interval: never
     optimistic: true
     set_action:
+      - switch.turn_on: configmode
+      - delay: 50ms
       - lambda: |-
           auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(x,id(maxStillDistanceRange).state,id(noneDuration).state);
+          uart_component->setMaxDistancesAndNoneDuration(x/0.75,x/0.75,id(noneDuration).state);
+      - delay: 50ms
+      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
+      - delay: 50ms
+      - switch.turn_off: configmode
+
   - platform: template
-    name: "Max Still Distance Range"
-    id: maxStillDistanceRange
-    min_value: 1
-    max_value: 8
-    step: 1
+    name: "sensitivity_threshold_(%)"
+    id: allSensitivity
+    min_value: 10
+    max_value: 100
+    step: 5
+    mode: box
     update_interval: never
     optimistic: true
     set_action:
+      - switch.turn_on: configmode
+      - delay: 50ms
       - lambda: |-
           auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,x,id(noneDuration).state);
+          uart_component->setAllSensitivity(x);
+      - delay: 50ms
+      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
+      - delay: 50ms
+      - switch.turn_off: configmode
+      
   - platform: template
-    name: "None Duration"
+    name: "motion_hold_(sec)"
     id: noneDuration
     min_value: 0
-    max_value: 32767
+    # max_value: 32767
+    max_value: 900
     step: 1
     mode: box
     update_interval: never
     optimistic: true
     set_action:
+      - switch.turn_on: configmode
+      - delay: 50ms
       - lambda: |-
           auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,id(maxStillDistanceRange).state,x);
-      
-
-button:
-  - platform: template
-    name: "Reboot LD2410"
-    on_press:
-      lambda: 'static_cast<LD2410 *>(ld2410)->reboot();'
-  - platform: template
-    name: "Turn on config mode"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(true);'
-  - platform: template
-    name: "Turn off config mode"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
-  - platform: template
-    name: "Get config"
-    on_press:
+          uart_component->setMaxDistancesAndNoneDuration(id(maxconfigDistance).state, id(maxconfigDistance).state, x);
+      - delay: 50ms
       - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
-  - platform: template
-    name: "Set baud rate to 256000"
+      - delay: 50ms
+      - switch.turn_off: configmode
+button:
+  - platform: restart
+    name: "reset/restart_ESP/MCU"
+    entity_category: diagnostic
     on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(7);'
-  - platform: template
-    name: "Set baud rate to 115200"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(5);'
-  - platform: template
-    name: "Set baud rate to 9600"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(1);'
+      - switch.turn_on: configmode
+      - delay: 50ms
+      - lambda: 'static_cast<LD2410 *>(ld2410)->factoryReset();'
+      - delay: 150ms
+      - lambda: 'static_cast<LD2410 *>(ld2410)->reboot();'
+      - delay: 150ms
 
-time:
-  - platform: sntp
-    id: time_sntp
-
+script:
+  - id: get_config
+    then:
+      - switch.turn_on: configmode
+      - delay: 500ms
+      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
+      - delay: 500ms
+      - switch.turn_off: configmode
+      
+  - id: clear_targets
+    then:
+      - lambda: |-
+          //id(hasTarget).publish_state(0);
+          //id(hasMovingTarget).publish_state(0);
+          //id(hasStillTarget).publish_state(0);
+          id(movingTargetDistance).publish_state(0);
+          id(movingTargetEnergy).publish_state(0);
+          id(stillTargetDistance).publish_state(0);
+          id(stillTargetEnergy).publish_state(0);
+          id(detectDistance).publish_state(0);
