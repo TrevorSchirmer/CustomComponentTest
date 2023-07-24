@@ -70,7 +70,7 @@ binary_sensor:
     name: Online
     id: ink_ha_connected
   - platform: gpio
-    name: mmwave_presence_ld2410
+    name: mmWave Presence
     id: mmwave_presence_ld2410
     pin: GPIO11
     device_class: motion
@@ -83,20 +83,7 @@ binary_sensor:
               - delay: 150ms
               - script.execute: clear_targets
 
-    
-  
-  #- platform: gpio
-  #  pin: 5
-  #  name: "PIR Sensor"
-  #  device_class: motion
 
-  #- platform: ld2410
-  #  has_target:
-  #    name: Presence
-  #  has_moving_target:
-  #    name: Moving Target
-  #  has_still_target:
-  #    name: Still Target
 
 
 sensor:
@@ -141,18 +128,18 @@ sensor:
       name: "CO2"
       id: "co2"
     temperature:
-      name: "SCD40 Temperature"
-      id: "scd40temperature"
+      name: SCD40 Temperature
+      id: scd40temperature
     humidity:
-      name: "SCD40 Humidity"
-      id: "scd40humidity"
+      name: SCD40 Humidity
+      id: scd40humidity
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
     address: 0x62
     i2c_id: bus_a
 
-  - platform: custom # currently crashes ESP32
+  - platform: custom
     lambda: |-
       auto uart_component = static_cast<LD2410 *>(ld2410);
       //return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
@@ -160,51 +147,40 @@ sensor:
     sensors:
     
   - platform: template
-    name: movingTargetDistance
+    name: Moving Target Distance
     id: movingTargetDistance
     unit_of_measurement: "cm"
     accuracy_decimals: 0
     internal: true
     
   - platform: template
-    name: movingTargetEnergy
+    name: Moving Target Energy
     id: movingTargetEnergy
     unit_of_measurement: "%"
     accuracy_decimals: 0
     internal: true
     
   - platform: template
-    name: stillTargetDistance
+    name: Still Target Distance
     id: stillTargetDistance
     unit_of_measurement: "cm"
     accuracy_decimals: 0
     internal: true
     
   - platform: template
-    name: stillTargetEnergy
+    name: Still Target Energy
     id: stillTargetEnergy
     unit_of_measurement: "%"
     accuracy_decimals: 0
     internal: true
     
   - platform: template
-    name: detectDistance
+    name: Detect Distance
     id: detectDistance
     unit_of_measurement: "cm"
     accuracy_decimals: 0
     internal: true
   
-  #- platform: ld2410
-  #  moving_distance:
-  #    name : Moving Distance
-  #  still_distance:
-  #    name: Still Distance
-  #  moving_energy:
-  #    name: Move Energy
-  #  still_energy:
-  #    name: Still Energy
-  #  detection_distance:
-  #    name: Detection Distance
 
 #light:
 #  - platform: neopixelbus
@@ -237,19 +213,12 @@ time:
 
 
 
-
-
-
-
-
-
-
 switch:
   - platform: safe_mode
-    name: use_safe_mode
+    name: mmWave Safe Mode
     
   - platform: template
-    name: configmode
+    name: mmWave Config Mode
     id: configmode
     optimistic: true
     # assumed_state: false
@@ -262,19 +231,13 @@ switch:
       - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
 
   - platform: template
-    name: show_target_stats
+    name: Show Target Stats
     id: show_stats
     optimistic: true
     internal: true
     turn_off_action:
       - script.execute: clear_targets
 
-text_sensor:
-  - platform: template
-    name: uptime_human_readable
-    id: uptime_human_readable
-    icon: mdi:clock-start
-    update_interval: 60s
 
   
     
@@ -282,7 +245,7 @@ text_sensor:
 
 number:  
   - platform: template
-    name: configMaxDistance
+    name: "mmWave Max Distance (M)"
     id: maxconfigDistance
     unit_of_measurement: "M"
     min_value: 0.75
@@ -302,7 +265,7 @@ number:
       - switch.turn_off: configmode
 
   - platform: template
-    name: "sensitivity_threshold_(%)"
+    name: "Sensitivity Threshold (%)"
     id: allSensitivity
     min_value: 10
     max_value: 100
@@ -322,7 +285,7 @@ number:
       - switch.turn_off: configmode
       
   - platform: template
-    name: "motion_hold_(sec)"
+    name: "Motion Hold (sec)"
     id: noneDuration
     min_value: 0
     # max_value: 32767
@@ -343,7 +306,7 @@ number:
       - switch.turn_off: configmode
 button:
   - platform: restart
-    name: "reset/restart_ESP/MCU"
+    name: "mmWave Factory Reset"
     entity_category: diagnostic
     on_press:
       - switch.turn_on: configmode
