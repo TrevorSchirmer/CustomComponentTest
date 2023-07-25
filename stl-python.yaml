@@ -15,7 +15,7 @@ esphome:
 
   project:
     name: "Apollo.Multisensor"
-    version: "Mk1"
+    version: "Multisensor Mk1"
 
   min_version: 2023.6.1
 
