@@ -13,8 +13,8 @@ esphome:
     then:
       - lambda: |-
           id(cpu_speed) = ESP.getCpuFreqMHz() ;
-      - output.turn_on: radarPwr
-      - delay: 6s
+      - rtttl.play: 'two_short:d=4,o=5,b=100:16e6,16e6'
+      
       
 
   project:
@@ -39,6 +39,13 @@ globals:
 api:
   #encryption:
   #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
+  services:
+    - service: play_buzzer
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda 'return song_str;'
 
 logger:
 
@@ -73,10 +80,12 @@ uart:
   stop_bits: 1
 
 output:
-  - platform: gpio
-    pin: GPIO36
-    id: radarPwr
-    inverted: false
+  - platform: ledc
+    pin: GPIO35
+    id: buzzer
+
+rtttl:
+ output: buzzer
 
 binary_sensor:
   - platform: status
@@ -176,6 +185,8 @@ light:
     pin: GPIO4
     num_leds: 1
     name: "RGB Light"
+
+
 
 
 
