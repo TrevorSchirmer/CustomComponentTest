@@ -5,6 +5,8 @@ esphome:
   name_add_mac_suffix: true
   platformio_options:
     board_build.flash_mode: dio
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"
 
   on_boot:
     priority: 900
@@ -20,7 +22,7 @@ esphome:
   min_version: 2023.6.1
 
 esp32:
-  board: esp32-c3-devkitm-1
+  board: deneyapmini
   framework:
     type: arduino
   #board: featheresp32-s2
@@ -44,7 +46,7 @@ ota:
 wifi:
   ssid: "Schirmer-IoT" #!secret wifi_ssid
   password: "Apollo1359!" #!secret wifi_password
-  power_save_mode: NONE
+  output_power: 10
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -61,8 +63,6 @@ i2c:
   scl: 5
   id: bus_a
 
-
-
 binary_sensor:
   - platform: status
     name: Online
@@ -74,13 +74,6 @@ binary_sensor:
       name: Moving Target
     has_still_target:
       name: Still Target
-  - platform: gpio
-    name: mmWave Presence
-    id: mmwave_presence_ld2410
-    pin: GPIO6
-    device_class: motion
-    
-
 ld2410:
   timeout: 150s
   max_move_distance : 6m
@@ -165,8 +158,8 @@ sensor:
 #    name: "NeoPixel Light"
 
 uart:
-  tx_pin: GPIO0
-  rx_pin: GPIO1
+  tx_pin: GPIO11
+  rx_pin: GPIO12
   baud_rate: 256000
   parity: NONE
   stop_bits: 1
