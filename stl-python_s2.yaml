@@ -14,6 +14,8 @@ esphome:
       - lambda: |-
           id(cpu_speed) = ESP.getCpuFreqMHz() ;
       - rtttl.play: 'two_short:d=4,o=5,b=100:16e6,16e6'
+      - lambda: |-
+          //id(ld2410_radar) -> set_max_distances_timeout_(id(ld2410_radar_move_distance).state, id(ld2410_radar_still_distance).state, id(ld2410_radar_timeout).state);
       
       
 
@@ -79,6 +81,56 @@ uart:
   parity: NONE
   stop_bits: 1
 
+number:
+  - platform: template
+    name: "Radar Max Move Distance"
+    id: ld2410_radar_move_distance
+    restore_value: true
+    initial_value: 4.5
+    min_value: 0.75
+    max_value: 6.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "m"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
+          
+  - platform: template
+    name: "Radar Max Still Distance"
+    id: ld2410_radar_still_distance
+    restore_value: true
+    initial_value: 4.5
+    min_value: 0.75
+    max_value: 6.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "m"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
+  - platform: template
+    name: "Radar Timeout"
+    id: ld2410_radar_timeout
+    restore_value: true
+    initial_value: 5
+    min_value: 1
+    max_value: 120
+    entity_category: "CONFIG"
+    unit_of_measurement: "s"
+    optimistic: true
+    update_interval: never
+    step: 1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
+  
+
+
 output:
   - platform: ledc
     pin: GPIO35
@@ -103,10 +155,9 @@ binary_sensor:
     id: mmwave_presence_ld2410
     pin: GPIO10
     device_class: motion
+
 ld2410:
   timeout: 150s
-  max_move_distance : 6m
-  max_still_distance: 0.75m
   id: ld2410_radar
 
 sensor:
