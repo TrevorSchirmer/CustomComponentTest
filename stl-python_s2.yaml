@@ -16,6 +16,7 @@ esphome:
       - rtttl.play: 'two_short:d=4,o=5,b=100:16e6,16e6'
       - lambda: |-
           //id(ld2410_radar) -> set_max_distances_timeout_(id(ld2410_radar_move_distance).state, id(ld2410_radar_still_distance).state, id(ld2410_radar_timeout).state);
+
       
       
 
@@ -70,8 +71,8 @@ web_server:
   port: 80
 
 i2c:
-  sda: 4
-  scl: 5
+  sda: 3
+  scl: 2
   id: bus_a
 
 uart:
@@ -129,12 +130,18 @@ number:
       - lambda: |-
           id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
   
-
+switch:
+  - platform: gpio
+    pin: 21
+    id: bme_pwr
+    name: "BME280 Power"
 
 output:
   - platform: ledc
     pin: GPIO35
     id: buzzer
+
+
 
 rtttl:
  output: buzzer
@@ -210,8 +217,9 @@ sensor:
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
-    address: 0x62
     i2c_id: bus_a
+
+
   - platform: ld2410
     moving_distance:
       name : Moving Distance
@@ -225,6 +233,25 @@ sensor:
       name: Still Energy
     detection_distance:
       name: Detection Distance
+
+  - platform: bme280
+    temperature:
+      name: "BME280 Temperature"
+      id: bme280temperature
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280pressure
+    humidity:
+      name: "BME280 Humidity"
+      id: bme280humidity
+    update_interval: 30s
+    i2c_id: bus_a
+
+  - platform: bh1750
+    name: "BH1750 Illuminance"
+    id: bh1750_illuminance
+    update_interval: 30s
+    i2c_id: bus_a
 
 
 
