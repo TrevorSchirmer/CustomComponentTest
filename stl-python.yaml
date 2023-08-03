@@ -35,6 +35,13 @@ globals:
 api:
   #encryption:
   #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
+  services:
+    - service: play_buzzer
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda 'return song_str;'
 
 logger:
 
@@ -44,7 +51,7 @@ ota:
 wifi:
   ssid: "Schirmer-IoT" #!secret wifi_ssid
   password: "Apollo1359!" #!secret wifi_password
-  power_save_mode: NONE
+
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -57,11 +64,75 @@ web_server:
   port: 80
 
 i2c:
-  sda: 4
-  scl: 5
+  sda: 1
+  scl: 0
   id: bus_a
 
+uart:
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
 
+number:
+  - platform: template
+    name: "Radar Max Move Distance"
+    id: ld2410_radar_move_distance
+    restore_value: true
+    initial_value: 4.5
+    min_value: 0.75
+    max_value: 6.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "m"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
+          
+  - platform: template
+    name: "Radar Max Still Distance"
+    id: ld2410_radar_still_distance
+    restore_value: true
+    initial_value: 4.5
+    min_value: 0.75
+    max_value: 6.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "m"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
+  - platform: template
+    name: "Radar Timeout"
+    id: ld2410_radar_timeout
+    restore_value: true
+    initial_value: 5
+    min_value: 1
+    max_value: 120
+    entity_category: "CONFIG"
+    unit_of_measurement: "s"
+    optimistic: true
+    update_interval: never
+    step: 1
+    set_action:
+      - lambda: |-
+          id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
+  
+
+output:
+  - platform: ledc
+    pin: GPIO7
+    id: buzzer
+
+
+
+rtttl:
+ output: buzzer
 
 binary_sensor:
   - platform: status
@@ -83,8 +154,6 @@ binary_sensor:
 
 ld2410:
   timeout: 150s
-  max_move_distance : 6m
-  max_still_distance: 0.75m
   id: ld2410_radar
 
 sensor:
@@ -137,8 +206,9 @@ sensor:
     automatic_self_calibration: false
     update_interval: 10s
     measurement_mode: "periodic"
-    address: 0x62
     i2c_id: bus_a
+
+
   - platform: ld2410
     moving_distance:
       name : Moving Distance
@@ -153,6 +223,18 @@ sensor:
     detection_distance:
       name: Detection Distance
 
+  - platform: bme280
+    temperature:
+      name: "BME280 Temperature"
+      id: bme280temperature
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280pressure
+    humidity:
+      name: "BME280 Humidity"
+      id: bme280humidity
+    update_interval: 30s
+    i2c_id: bus_a
 
 
 
@@ -164,12 +246,6 @@ light:
     num_leds: 1
     name: "RGB Light"
 
-uart:
-  tx_pin: GPIO0
-  rx_pin: GPIO1
-  baud_rate: 256000
-  parity: NONE
-  stop_bits: 1
 
 time:
   - platform: sntp
