@@ -156,13 +156,13 @@ sensor:
 
 
 
-#light:
-#  - platform: neopixelbus
-#    type: GRB
-#    variant: WS2811
-#    pin: 3
-#    num_leds: 1
-#    name: "NeoPixel Light"
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: GPIO3
+    num_leds: 1
+    name: "RGB Light"
 
 uart:
   tx_pin: GPIO0
