@@ -130,11 +130,6 @@ number:
       - lambda: |-
           id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
   
-switch:
-  - platform: gpio
-    pin: 21
-    id: bme_pwr
-    name: "BME280 Power"
 
 output:
   - platform: ledc
