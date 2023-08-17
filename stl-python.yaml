@@ -1,7 +1,7 @@
 esphome:
-  name: apollo-multisensor-mk1
-  friendly_name: Apollo Multisensor Mk1
-  comment: Apollo Multisensor Mk1
+  name: apollo-msr-mk1
+  friendly_name: Apollo Multisensor Mk1 (MSR-1)
+  comment: Apollo Multisensor Mk1 (MSR-1)
   name_add_mac_suffix: true
   platformio_options:
     board_build.flash_mode: dio
@@ -15,7 +15,7 @@ esphome:
 
   project:
     name: "Apollo.Multisensor"
-    version: "Multisensor Mk1"
+    version: "MSR-1"
 
   min_version: 2023.6.1
 
@@ -126,7 +126,7 @@ number:
 
 output:
   - platform: ledc
-    pin: GPIO7
+    pin: GPIO10
     id: buzzer
 
 
