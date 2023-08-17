@@ -8,17 +8,19 @@ esphome:
     board_build.flash_mode: dio
 
   on_boot:
-    priority: 900
+  - priority: 900.0
     then:
       - lambda: |-
           id(cpu_speed) = ESP.getCpuFreqMHz();
+      
+  - priority: 250.0
+    then:
       - lambda: |-
           id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
       - lambda: |-
           id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
       - lambda: |-
           id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
-      
 
   project:
     name: "Apollo.Multisensor"
@@ -31,8 +33,6 @@ esp32:
   board: esp32-c3-devkitm-1
   framework:
     type: arduino
-    version: 2.0.9
-    platform_version: 6.3.2
   #board: featheresp32-s2
 
 globals:
@@ -57,7 +57,7 @@ api:
     #Co2 Calibration Service
     - service: calibrate_co2_value
       variables:
-        co2_ppm: int
+        co2_ppm: float
       then:
         - scd4x.perform_forced_calibration:
             value: !lambda 'return co2_ppm;'
@@ -100,7 +100,6 @@ uart:
   parity: NONE
   stop_bits: 1
 
-
 # Numbers For Configuration
 number:
   - platform: template
@@ -134,6 +133,11 @@ number:
     set_action:
       - lambda: |-
           id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
+  
+  
+  
+  
+  
   - platform: template
     name: "Radar Timeout"
     id: ld2410_radar_timeout
@@ -149,8 +153,8 @@ number:
     set_action:
       - lambda: |-
           id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
-  
-  # Temperature Offsets
+
+  #Temperature Offsets
   - platform: template
     name: SCD40 Temperature Offset
     id: scd40_temperature_offset
