@@ -112,6 +112,7 @@ number:
     entity_category: "CONFIG"
     unit_of_measurement: "m"
     optimistic: true
+    mode: "box"
     update_interval: never
     step: 0.1
     set_action:
@@ -128,15 +129,12 @@ number:
     entity_category: "CONFIG"
     unit_of_measurement: "m"
     optimistic: true
+    mode: "box"
     update_interval: never
     step: 0.1
     set_action:
       - lambda: |-
-          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
-  
-  
-  
-  
+          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);  
   
   - platform: template
     name: "Radar Timeout"
@@ -148,6 +146,7 @@ number:
     entity_category: "CONFIG"
     unit_of_measurement: "s"
     optimistic: true
+    mode: "box"
     update_interval: never
     step: 1
     set_action:
@@ -163,7 +162,7 @@ number:
     min_value: -70.0
     max_value: 70.0
     entity_category: "CONFIG"
-    unit_of_measurement: "°C"
+    unit_of_measurement: "°F"
     optimistic: true
     update_interval: never
     step: 0.1
@@ -176,11 +175,28 @@ number:
     min_value: -70.0
     max_value: 70.0
     entity_category: "CONFIG"
-    unit_of_measurement: "°C"
+    unit_of_measurement: "°F"
     optimistic: true
     update_interval: never
     step: 0.1
-  
+
+  - platform: template
+    name: Co2 Calibration Number
+    id: co2_calibration_number
+    restore_value: true
+    initial_value: 419.0
+    min_value: 0.0
+    max_value: 1000.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "ppm"
+    optimistic: true
+    mode: "box"
+    update_interval: never
+    step: 10
+    set_action:
+      - scd4x.perform_forced_calibration:
+          value: !lambda 'return id(co2_calibration_number).state;'
+          id: scd40
 
 # Buzzer
 output:
@@ -256,7 +272,7 @@ sensor:
       name: SCD40 Temperature
       id: scd40temperature
       filters:
-        - lambda: return x + id(scd40_temperature_offset).state;
+        - lambda: return x - id(scd40_temperature_offset).state;
     humidity:
       name: SCD40 Humidity
       id: scd40humidity
@@ -287,7 +303,7 @@ sensor:
       name: "BME280 Temperature"
       id: bme280temperature
       filters:
-        - lambda: return x + id(bme280_temperature_offset).state;
+        - lambda: return x - id(bme280_temperature_offset).state;
     pressure:
       name: "BME280 Pressure"
       id: bme280pressure
