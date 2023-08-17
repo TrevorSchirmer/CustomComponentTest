@@ -64,8 +64,8 @@ web_server:
   port: 80
 
 i2c:
-  sda: 1
-  scl: 0
+  sda: GPIO1
+  scl: GPIO0
   id: bus_a
 
 uart:
@@ -176,7 +176,7 @@ sensor:
   - platform: uptime
     name: Uptime
     id: sys_uptime
-    update_interval: 10s
+    update_interval: 30s
 
   - platform: template
     id: esp_memory
@@ -190,7 +190,7 @@ sensor:
   - platform: wifi_signal
     name: RSSI
     id: wifi_signal_db
-    update_interval: 5s
+    update_interval: 60s
     entity_category: "diagnostic"
 
   - platform: scd4x
@@ -204,7 +204,7 @@ sensor:
       name: SCD40 Humidity
       id: scd40humidity
     automatic_self_calibration: false
-    update_interval: 10s
+    update_interval: 60s
     measurement_mode: "periodic"
     i2c_id: bus_a
 
@@ -233,8 +233,24 @@ sensor:
     humidity:
       name: "BME280 Humidity"
       id: bme280humidity
-    update_interval: 30s
+    update_interval: 60s
     i2c_id: bus_a
+    address: 0x76
+  
+  - platform: ltr390
+    uv:
+      name: "LTR390 UV"
+      id: ltr390uv
+    light:
+      name: "LTR390 Light"
+      id: ltr390light
+    uv_index:
+      name: "LTR390 UV Index"
+      id: ltr390uvindex
+    ambient_light:
+      name: "LTR390 Ambient Light"
+      id: ltr390ambientlight
+    update_interval: 60s
 
 
 
