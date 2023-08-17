@@ -1,3 +1,4 @@
+#Define Project
 esphome:
   name: apollo-msr-mk1
   friendly_name: Apollo Multisensor Mk1 (MSR-1)
@@ -19,6 +20,7 @@ esphome:
 
   min_version: 2023.6.1
 
+# Define Board
 esp32:
   board: esp32-c3-devkitm-1
   framework:
@@ -32,6 +34,7 @@ globals:
     initial_value: "0"
 
 # Enable Home Assistant API
+# Also Add Buzzer Service Connection
 api:
   #encryption:
   #  key: "Csv8khdaMzNQyVYMYVpCfcDFHXiJYiYjZ+KMY8g4xF4="
@@ -42,20 +45,33 @@ api:
       then:
         - rtttl.play:
             rtttl: !lambda 'return song_str;'
+            
+    #Co2 Calibration Service
+    - service: calibrate_co2_value
+      variables:
+        co2_ppm: int
+      then:
+      - scd4x.perform_forced_calibration:
+          value: !lambda 'return co2_ppm;'
+          id: my_scd41
 
 logger:
 
 ota:
   password: "apolloautomation"
+  safe_mode: false
 
 wifi:
+  output_power: 15dB
+  power_save_mode: LIGHT
+  reboot_timeout: 10min
   ssid: "Schirmer-IoT" #!secret wifi_ssid
   password: "Apollo1359!" #!secret wifi_password
 
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Apollo Multisensor Hotspot"
+    ssid: "Apollo MSR1 Hotspot"
     password: ""
 
 captive_portal:
@@ -63,6 +79,7 @@ captive_portal:
 web_server:
   port: 80
 
+# Set Up Key Ports For Communication
 i2c:
   sda: GPIO1
   scl: GPIO0
@@ -75,6 +92,8 @@ uart:
   parity: NONE
   stop_bits: 1
 
+
+# Numbers For Configuration
 number:
   - platform: template
     name: "Radar Max Move Distance"
@@ -123,16 +142,43 @@ number:
       - lambda: |-
           id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
   
+  # Temperature Offsets
+  - platform: template
+    name: SCD40 Temperature Offset
+    id: scd40_temperature_offset
+    restore_value: true
+    initial_value: 20.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
 
+  - platform: template
+    name: BME280 Temperature Offset
+    id: bme280_temperature_offset
+    restore_value: true
+    initial_value: 20.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+  
+
+# Buzzer
 output:
   - platform: ledc
     pin: GPIO10
     id: buzzer
-
-
-
 rtttl:
  output: buzzer
+
+
 
 binary_sensor:
   - platform: status
@@ -145,15 +191,10 @@ binary_sensor:
       name: Moving Target
     has_still_target:
       name: Still Target
-  - platform: gpio
-    name: mmWave Presence
-    id: mmwave_presence_ld2410
-    pin: GPIO6
-    device_class: motion
     
 
 ld2410:
-  timeout: 150s
+  timeout: !lambda return id(ld2410_radar_timeout).state;
   id: ld2410_radar
 
 sensor:
@@ -172,6 +213,7 @@ sensor:
     unit_of_measurement: °C
     device_class: TEMPERATURE
     update_interval: 30s
+    
 
   - platform: uptime
     name: Uptime
@@ -200,6 +242,8 @@ sensor:
     temperature:
       name: SCD40 Temperature
       id: scd40temperature
+      filters:
+        - lambda: return x + id(scd40_temperature_offset).state;
     humidity:
       name: SCD40 Humidity
       id: scd40humidity
@@ -207,6 +251,8 @@ sensor:
     update_interval: 60s
     measurement_mode: "periodic"
     i2c_id: bus_a
+    ambient_pressure_compensation_source: "bme280pressure"
+    
 
 
   - platform: ld2410
@@ -227,6 +273,8 @@ sensor:
     temperature:
       name: "BME280 Temperature"
       id: bme280temperature
+      filters:
+        - lambda: return x + id(bme280_temperature_offset).state;
     pressure:
       name: "BME280 Pressure"
       id: bme280pressure
@@ -253,7 +301,6 @@ sensor:
     update_interval: 60s
 
 
-
 light:
   - platform: neopixelbus
     type: GRB
@@ -268,34 +315,6 @@ time:
     id: time_sntp
 
 button:
-  #- platform: template
-  #  name: "Enable LD2410 BLE"
-  #  # disabled_by_default: True
-  #  entity_category: "config"
-  #  icon: mdi:bluetooth
-  #  on_press:
-  #    lambda: |-
-  #      id(ld2410_radar) -> ble_control(true);
-#
-  #- platform: template
-  #  name: "Disable LD2410 BLE"
-  #  # disabled_by_default: True
-  #  entity_category: "config"
-  #  icon: mdi:bluetooth-off
-  #  on_press:
-  #    lambda: |-
-  #      id(ld2410_radar) -> ble_control(false);
-#
-  #- platform: template
-  #  name: "LD2410 Reboot"
-  #  icon: mdi:radar
-  #  entity_category: "config"
-  #  on_press:
-  #    lambda: |-
-  #      // auto* radar = LD2410Component::get(ld2410); 
-  #      // radar -> roboot();
-  #      id(ld2410_radar) -> reboot();
-
   - platform: restart
     icon: mdi:power-cycle
     name: "ESP Reboot"
