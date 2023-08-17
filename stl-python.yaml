@@ -11,7 +11,13 @@ esphome:
     priority: 900
     then:
       - lambda: |-
-          id(cpu_speed) = ESP.getCpuFreqMHz() ;
+          id(cpu_speed) = ESP.getCpuFreqMHz();
+      - lambda: |-
+          id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
+      - lambda: |-
+          id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
+      - lambda: |-
+          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
       
 
   project:
@@ -25,6 +31,8 @@ esp32:
   board: esp32-c3-devkitm-1
   framework:
     type: arduino
+    version: 2.0.9
+    platform_version: 6.3.2
   #board: featheresp32-s2
 
 globals:
@@ -45,15 +53,15 @@ api:
       then:
         - rtttl.play:
             rtttl: !lambda 'return song_str;'
-            
+
     #Co2 Calibration Service
     - service: calibrate_co2_value
       variables:
         co2_ppm: int
       then:
-      - scd4x.perform_forced_calibration:
-          value: !lambda 'return co2_ppm;'
-          id: my_scd41
+        - scd4x.perform_forced_calibration:
+            value: !lambda 'return co2_ppm;'
+            id: scd40
 
 logger:
 
@@ -194,7 +202,7 @@ binary_sensor:
     
 
 ld2410:
-  timeout: !lambda return id(ld2410_radar_timeout).state;
+  timeout: 10s
   id: ld2410_radar
 
 sensor:
@@ -236,6 +244,7 @@ sensor:
     entity_category: "diagnostic"
 
   - platform: scd4x
+    id: scd40
     co2:
       name: "CO2"
       id: "co2"
