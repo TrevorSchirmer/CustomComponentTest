@@ -1,6 +1,6 @@
 #Define Project
 esphome:
-  name: apollo-msr-mk1
+  name: apollo-msr-1
   friendly_name: Apollo Multisensor Mk1 (MSR-1)
   comment: Apollo Multisensor Mk1 (MSR-1)
   name_add_mac_suffix: true
@@ -12,21 +12,12 @@ esphome:
     then:
       - lambda: |-
           id(cpu_speed) = ESP.getCpuFreqMHz();
-      
-  - priority: 250.0
-    then:
-      - lambda: |-
-          id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
-      - lambda: |-
-          id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
-      - lambda: |-
-          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);
 
   project:
-    name: "Apollo.Multisensor"
+    name: "ApolloAutomation.MSR-1"
     version: "MSR-1"
 
-  min_version: 2023.6.1
+  min_version: 2023.6.1 # 2023.8.0
 
 # Define Board
 esp32:
@@ -63,6 +54,15 @@ api:
             value: !lambda 'return co2_ppm;'
             id: scd40
 
+    #Setting HLK Password
+    - service: set_ld2410_bluetooth_password
+      variables:
+        password: string
+      then:
+        - bluetooth_password.set:
+            id: ld2410_radar
+            password: !lambda 'return password;'
+
 logger:
 
 ota:
@@ -70,11 +70,9 @@ ota:
   safe_mode: false
 
 wifi:
-  output_power: 15dB
-  power_save_mode: LIGHT
-  reboot_timeout: 10min
   ssid: "Schirmer-IoT" #!secret wifi_ssid
   password: "Apollo1359!" #!secret wifi_password
+
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Apollo MSR1 Hotspot"
@@ -85,8 +83,6 @@ captive_portal:
 web_server:
   port: 80
 
-esp32_ble_tracker:
-  id: ble_tracker
 
 
 # Set Up Key Ports For Communication
@@ -104,56 +100,13 @@ uart:
 
 # Numbers For Configuration
 number:
-  - platform: template
-    name: "Radar Max Move Distance"
-    id: ld2410_radar_move_distance
-    restore_value: true
-    initial_value: 4.5
-    min_value: 0.75
-    max_value: 6.0
-    entity_category: "CONFIG"
-    unit_of_measurement: "m"
-    optimistic: true
-    mode: "box"
-    update_interval: never
-    step: 0.1
-    set_action:
-      - lambda: |-
-          id(ld2410_radar) -> set_max_move_distance(id(ld2410_radar_move_distance).state);
-          
-  - platform: template
-    name: "Radar Max Still Distance"
-    id: ld2410_radar_still_distance
-    restore_value: true
-    initial_value: 4.5
-    min_value: 0.75
-    max_value: 6.0
-    entity_category: "CONFIG"
-    unit_of_measurement: "m"
-    optimistic: true
-    mode: "box"
-    update_interval: never
-    step: 0.1
-    set_action:
-      - lambda: |-
-          id(ld2410_radar) -> set_max_still_distance(id(ld2410_radar_still_distance).state);  
-  
-  - platform: template
-    name: "Radar Timeout"
-    id: ld2410_radar_timeout
-    restore_value: true
-    initial_value: 5
-    min_value: 1
-    max_value: 120
-    entity_category: "CONFIG"
-    unit_of_measurement: "s"
-    optimistic: true
-    mode: "box"
-    update_interval: never
-    step: 1
-    set_action:
-      - lambda: |-
-          id(ld2410_radar) -> set_timeout(id(ld2410_radar_timeout).state);
+  - platform: ld2410
+    timeout:
+      name: Radar Timeout
+    max_move_distance_gate:
+      name: Radar Max Move Distance
+    max_still_distance_gate:
+      name: Radar Max Still Distance
 
   #Temperature Offsets
   - platform: template
@@ -216,16 +169,16 @@ binary_sensor:
     id: ink_ha_connected
   - platform: ld2410
     has_target:
-      name: Presence
+      name: Radar Target
     has_moving_target:
-      name: Moving Target
+      name: Radar Moving Target
     has_still_target:
-      name: Still Target
+      name: Radar Still Target
     
 
 ld2410:
-  timeout: 10s
   id: ld2410_radar
+  
 
 sensor:
   - platform: template
@@ -242,13 +195,13 @@ sensor:
     lambda: return temperatureRead();
     unit_of_measurement: °C
     device_class: TEMPERATURE
-    update_interval: 30s
-    
+    update_interval: 60s
+
 
   - platform: uptime
     name: Uptime
     id: sys_uptime
-    update_interval: 30s
+    update_interval: 60s
 
   - platform: template
     id: esp_memory
@@ -282,23 +235,22 @@ sensor:
     update_interval: 60s
     measurement_mode: "periodic"
     i2c_id: bus_a
-    ambient_pressure_compensation_source: "bme280pressure"
-    
+    ambient_pressure_compensation_source: bme280pressure
 
 
   - platform: ld2410
     moving_distance:
-      name : Moving Distance
+      name : Radar Moving Distance
       id: moving_distance
     still_distance:
-      name: Still Distance
+      name: Radar Still Distance
       id: still_distance
     moving_energy:
-      name: Move Energy
+      name: Radar Move Energy
     still_energy:
-      name: Still Energy
+      name: Radar Still Energy
     detection_distance:
-      name: Detection Distance
+      name: Radar Detection Distance
 
   - platform: bme280
     temperature:
@@ -335,10 +287,14 @@ sensor:
 light:
   - platform: neopixelbus
     type: GRB
-    variant: WS2812
+    variant: WS2812x
     pin: GPIO3
     num_leds: 1
     name: "RGB Light"
+    method:
+      type: esp32_rmt
+      channel: 0
+
 
 
 time:
@@ -354,3 +310,14 @@ button:
     disabled_by_default: True
     name: Factory Reset
     id: factory_reset_all
+
+  - platform: ld2410
+    factory_reset:
+      name: "Factory Reset ld2410"
+    restart:
+      name: "Restart ld2410"
+
+switch:
+  - platform: ld2410
+    bluetooth:
+      name: "Radar Control Bluetooth"
