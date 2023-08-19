@@ -70,8 +70,8 @@ ota:
   safe_mode: false
 
 wifi:
-  ssid: "Schirmer-IoT" #!secret wifi_ssid
-  password: "Apollo1359!" #!secret wifi_password
+  ssid: "Wifi" #!secret wifi_ssid
+  password: "Password!" #!secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
